@@ -14,13 +14,16 @@ const SYSTEM = [
  * Estrutura um CV em texto cru no ResumeSchema. temperature 0 para fidelidade.
  */
 export async function structureResume(req: StructureRequest): Promise<Resume> {
-  const model = resolveModel(req.provider, req.apiKey, req.model);
+  const model = resolveModel(req.apiKey, req.model);
   const { object } = await generateObject({
     model,
     schema: ResumeSchema,
     system: SYSTEM,
     prompt: `Estruture este currículo:\n\n${req.rawText.trim()}`,
     temperature: 0,
+    providerOptions: {
+      google: { thinkingConfig: { thinkingBudget: 256 } },
+    },
   });
   return object;
 }

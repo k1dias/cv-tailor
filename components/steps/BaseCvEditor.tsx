@@ -9,17 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { CvPdfImport } from "./CvPdfImport";
 import { getBaseCv, saveBaseCv } from "@/lib/storage/db";
 import type { Resume } from "@/lib/schema/resume";
-import type { Provider } from "@/lib/schema/adapt";
 
 interface Props {
-  provider: Provider;
   apiKey: string;
   model: string;
   value: string;
   onChange: (rawText: string) => void;
 }
 
-export function BaseCvEditor({ provider, apiKey, model, value, onChange }: Props) {
+export function BaseCvEditor({ apiKey, model, value, onChange }: Props) {
   const [structured, setStructured] = useState<Resume | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [structuring, setStructuring] = useState(false);
@@ -63,7 +61,7 @@ export function BaseCvEditor({ provider, apiKey, model, value, onChange }: Props
         const res = await fetch("/api/structure", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ provider, apiKey, model: model || undefined, rawText: value }),
+          body: JSON.stringify({ apiKey, model: model || undefined, rawText: value }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -89,21 +87,30 @@ export function BaseCvEditor({ provider, apiKey, model, value, onChange }: Props
   }
 
   return (
-    <Card>
+    <Card className="shadow-xs">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          2. CV base
-          {savedAt && !dirty && <Badge variant="secondary">Salvo</Badge>}
-          {dirty && <Badge variant="outline">Não salvo</Badge>}
+        <CardTitle className="font-display flex items-center gap-3 text-2xl tracking-tight">
+          CV base
+          {savedAt && !dirty && (
+            <Badge className="bg-thread-soft font-sans text-thread" variant="secondary">
+              Salvo
+            </Badge>
+          )}
+          {dirty && (
+            <Badge variant="outline" className="font-sans text-muted-foreground">
+              Não salvo
+            </Badge>
+          )}
         </CardTitle>
-        <CardDescription>
-          Cole seu currículo ou importe um PDF. É a <strong>fonte de verdade</strong> — a IA só usa
-          o que está aqui.
+        <CardDescription className="leading-relaxed">
+          Cole seu currículo ou importe um PDF. É a{" "}
+          <strong className="text-foreground">fonte de verdade</strong> — a IA só usa o que está
+          aqui.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-3">
+      <CardContent className="grid gap-4">
         <Textarea
-          className="min-h-48"
+          className="min-h-48 bg-background/60 leading-relaxed"
           placeholder="Cole aqui seu currículo completo..."
           value={value}
           onChange={(e) => update(e.target.value)}
@@ -125,22 +132,19 @@ export function BaseCvEditor({ provider, apiKey, model, value, onChange }: Props
 }
 
 function StructuredPreview({ resume }: { resume: Resume }) {
+  const skillCount = resume.skills.reduce((n, g) => n + g.items.length, 0);
   return (
-    <div className="rounded-md border bg-muted/30 p-4 text-sm">
-      <p className="mb-2 font-medium">
-        Estrutura detectada{" "}
-        <span className="font-normal text-muted-foreground">
-          (confirme que nada foi inventado)
-        </span>
+    <div className="rounded-md border border-dashed border-thread/40 bg-thread-soft/40 p-4 text-sm">
+      <p className="tag-label mb-3 text-thread">
+        Estrutura detectada — confirme que nada foi inventado
       </p>
-      <ul className="grid gap-1 text-muted-foreground">
-        <li>
-          <strong>{resume.contact.name}</strong>
-        </li>
-        <li>{resume.experience.length} experiência(s)</li>
-        <li>{resume.skills.reduce((n, g) => n + g.items.length, 0)} skill(s)</li>
-        <li>{resume.education.length} formação(ões)</li>
-      </ul>
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+        <span className="font-display text-lg">{resume.contact.name}</span>
+        <span className="text-muted-foreground">
+          {resume.experience.length} experiência(s) · {skillCount} skill(s) ·{" "}
+          {resume.education.length} formação(ões)
+        </span>
+      </div>
     </div>
   );
 }

@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { ResumeSchema } from "./resume";
 
-/** Provedores de IA suportados (BYOK). */
-export const ProviderSchema = z.enum(["anthropic", "openai"]);
-export type Provider = z.infer<typeof ProviderSchema>;
-
 export const LanguageSchema = z.enum(["pt", "en"]);
 export type OutputLanguage = z.infer<typeof LanguageSchema>;
 
@@ -49,7 +45,6 @@ export type AdaptResult = z.infer<typeof AdaptResultSchema>;
 
 /** Entrada da rota /api/structure (texto cru -> Resume estruturado). */
 export const StructureRequestSchema = z.object({
-  provider: ProviderSchema,
   apiKey: z.string().min(1, "Chave de API obrigatória."),
   model: z.string().optional(),
   rawText: z.string().min(20, "Texto do CV muito curto."),
@@ -58,7 +53,6 @@ export type StructureRequest = z.infer<typeof StructureRequestSchema>;
 
 /** Entrada da rota /api/adapt. */
 export const AdaptRequestSchema = z.object({
-  provider: ProviderSchema,
   apiKey: z.string().min(1, "Chave de API obrigatória."),
   model: z.string().optional(),
   baseCvText: z.string().min(20, "CV base muito curto."),

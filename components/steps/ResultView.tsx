@@ -53,15 +53,20 @@ export function ResultView({
   const clean = cleanResume(resume);
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-5">
       {warnings.length > 0 && (
-        <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          <p className="font-semibold">⚠ Verifique estes itens — podem não estar no seu CV base:</p>
-          <ul className="mt-1 list-disc pl-5">
+        <div className="rounded-md border border-dashed border-brass/50 bg-brass-soft/50 p-4 text-sm">
+          <p className="tag-label mb-2 text-brass">
+            Verifique — itens que podem não estar no seu CV base
+          </p>
+          <ul className="grid gap-1">
             {warnings.map((w, i) => (
-              <li key={i}>
-                <span className="font-medium">{w.label}</span>{" "}
-                <span className="text-xs opacity-80">({w.kind})</span>
+              <li key={i} className="flex items-baseline gap-2">
+                <span aria-hidden className="text-brass">
+                  ✂
+                </span>
+                <span className="font-medium">{w.label}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{w.kind}</span>
               </li>
             ))}
           </ul>
@@ -73,34 +78,36 @@ export function ResultView({
           {editing ? "Concluir edição" : "Editar"}
         </Button>
         <Button variant="secondary" onClick={() => printResume()}>
-          Exportar CV (PDF)
+          Exportar CV <span className="font-mono text-[11px] opacity-60">PDF</span>
         </Button>
         {result.coverLetter && (
           <Button variant="secondary" onClick={() => printLetter()}>
-            Exportar carta (PDF)
+            Exportar carta <span className="font-mono text-[11px] opacity-60">PDF</span>
           </Button>
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <Card>
-          <CardContent className="p-0">
-            {editing ? (
-              <div className="p-6">
-                <ResumeEditor value={resume} onChange={setResume} />
-              </div>
-            ) : (
-              <ResumeTemplate resume={clean} />
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_360px]">
+        {editing ? (
+          <Card className="shadow-xs">
+            <CardContent className="p-6">
+              <ResumeEditor value={resume} onChange={setResume} />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="sheet overflow-hidden rounded-sm">
+            <ResumeTemplate resume={clean} />
+          </div>
+        )}
 
         <div className="grid gap-6">
           <MatchPanel match={result.match} />
           {result.coverLetter && (
-            <Card>
+            <Card className="shadow-xs">
               <CardHeader>
-                <CardTitle>Carta de apresentação</CardTitle>
+                <CardTitle className="font-display text-xl tracking-tight">
+                  Carta de apresentação
+                </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 text-sm leading-relaxed">
                 <p>{result.coverLetter.greeting}</p>

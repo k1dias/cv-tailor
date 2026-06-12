@@ -8,7 +8,7 @@ import { buildSystemPrompt, buildUserPrompt } from "./prompt";
  * ao AdaptResultSchema). A chave é usada uma vez e descartada com o escopo.
  */
 export async function runAdaptation(req: AdaptRequest): Promise<AdaptResult> {
-  const model = resolveModel(req.provider, req.apiKey, req.model);
+  const model = resolveModel(req.apiKey, req.model);
 
   const { object } = await generateObject({
     model,
@@ -16,6 +16,11 @@ export async function runAdaptation(req: AdaptRequest): Promise<AdaptResult> {
     system: buildSystemPrompt(req.language, req.includeCoverLetter),
     prompt: buildUserPrompt(req.baseCvText, req.jobDescription),
     temperature: 0.2,
+    // Limita tokens de raciocínio do Gemini 2.5 (thinking model).
+    // Sem esse limite o free tier estoura com 1 chamada num CV real.
+    providerOptions: {
+      google: { thinkingConfig: { thinkingBudget: 512 } },
+    },
   });
 
   // Garante coerência com o toggle (alguns modelos geram carta mesmo sem pedir).

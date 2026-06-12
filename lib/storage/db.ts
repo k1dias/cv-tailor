@@ -2,7 +2,7 @@
 
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { Resume } from "@/lib/schema/resume";
-import type { AdaptResult, OutputLanguage, Provider } from "@/lib/schema/adapt";
+import type { AdaptResult, OutputLanguage } from "@/lib/schema/adapt";
 
 /**
  * Persistência local (IndexedDB). Fonte de verdade do CV base e do histórico.
@@ -20,7 +20,6 @@ export interface HistoryEntry {
   createdAt: number;
   jobTitleGuess: string;
   language: OutputLanguage;
-  provider: Provider;
   hadCoverLetter: boolean;
   matchScore: number;
   jobDescription: string;

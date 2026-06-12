@@ -4,7 +4,7 @@
 
 Adapte seu currículo a vagas específicas com IA — **sem inventar nada**. Cole seu CV (ou importe um PDF) e a descrição da vaga: receba um CV otimizado para ATS, análise de match com gaps e carta de apresentação opcional, com export em PDF.
 
-**BYOK (bring your own key):** o usuário usa a própria chave de API (Claude ou OpenAI). A chave fica no navegador e o app não tem custo de IA nem armazena dados de usuários.
+**BYOK (bring your own key):** o usuário usa a própria chave do **Google Gemini** — grátis, sem cartão ([Google AI Studio](https://aistudio.google.com/app/apikey)). A chave fica no navegador e o app não tem custo de IA nem armazena dados de usuários.
 
 ---
 
@@ -25,7 +25,7 @@ Adapte seu currículo a vagas específicas com IA — **sem inventar nada**. Col
 
 ## Como funciona
 
-1. **Setup:** o usuário escolhe o provedor (Claude/OpenAI) e cola a própria chave de API.
+1. **Setup:** o usuário cola a própria chave do Google Gemini (grátis no [AI Studio](https://aistudio.google.com/app/apikey), sem cartão). Modelo default `gemini-2.0-flash`, sobrescrevível.
 2. **CV base:** cola o currículo em texto ou importa um PDF (extração client-side). Opcionalmente "estrutura" o CV via IA num JSON revisável — esse CV é a **fonte de verdade**.
 3. **Adaptação:** cola a descrição da vaga, escolhe idioma (PT/EN) e se quer carta. O backend chama a IA com saída **forçada a um schema Zod** e retorna: CV adaptado + análise de match (score, requisitos atendidos com evidência, gaps, keywords) + carta opcional.
 4. **Resultado:** template limpo ATS-friendly, editor inline campo a campo, export em **2 PDFs separados** (CV e carta) via diálogo de impressão.
@@ -37,7 +37,7 @@ Adapte seu currículo a vagas específicas com IA — **sem inventar nada**. Col
 |---|---|
 | Framework | **Next.js 15.5** (App Router) — versão fixada de propósito, não subir para 16 sem decisão explícita |
 | UI | React 19, Tailwind 4, shadcn/ui (**base-ui**, não Radix), Framer Motion |
-| IA | Vercel **AI SDK v6** (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`) com `generateObject` |
+| IA | Vercel **AI SDK v6** (`ai`, `@ai-sdk/google`) com `generateObject` — Google Gemini (default `gemini-2.0-flash`) |
 | Validação | **Zod v4** (schemas compartilhados entre front e back) |
 | Persistência | **IndexedDB** via `idb` + `localStorage` (100% local-first, sem banco de usuários) |
 | PDF | `pdfjs-dist` (import) e `react-to-print` v3 (export) |
@@ -62,16 +62,16 @@ Monorepo fullstack Next.js — front e back no mesmo deploy:
 
 ```
 Browser (localStorage: chave · IndexedDB: CV base + histórico)
-   │  POST /api/adapt    { provider, apiKey, baseCvText, jobDescription, language, includeCoverLetter }
-   │  POST /api/structure { provider, apiKey, rawText }
+   │  POST /api/adapt    { apiKey, baseCvText, jobDescription, language, includeCoverLetter }
+   │  POST /api/structure { apiKey, rawText }
    ▼
 Route Handlers (runtime Node, force-dynamic, sem cache)
    │  Vercel AI SDK → generateObject(schema Zod)
    ▼
-Anthropic / OpenAI → JSON validado → resposta
+Google Gemini → JSON validado → resposta
 ```
 
-- O backend é um **proxy fino**: instancia o provider com a chave recebida, faz **uma** chamada e descarta a chave. Não há sessão, banco nem estado no servidor.
+- O backend é um **proxy fino**: instancia o Gemini com a chave recebida (`lib/ai/providers.ts`), faz **uma** chamada e descarta a chave. Não há sessão, banco nem estado no servidor.
 - Todo dado do usuário (chave, CV, histórico) vive **apenas no browser**.
 - A validação Zod roda nas duas pontas com os mesmos schemas (`lib/schema/`).
 
@@ -104,11 +104,11 @@ PLAN.md                      # plano original do projeto (decisões e fases)
 
 ## Modelo de dados
 
-**localStorage** (chaves `cvt.*`): `provider`, `apiKey`, `model` (opcional), `language`. Nunca gravar chave vazia (ver `keystore.ts`).
+**localStorage** (chaves `cvt.*`): `apiKey`, `model` (opcional), `language`. Nunca gravar chave vazia (ver `keystore.ts`).
 
 **IndexedDB** (banco `cv-tailor`, v1):
 - `kv` → registro `baseCv`: `{ rawText, structured?: Resume, updatedAt }`
-- `history` → `{ id, createdAt, jobTitleGuess, language, provider, hadCoverLetter, matchScore, jobDescription, result: AdaptResult }`, índice `by-createdAt`
+- `history` → `{ id, createdAt, jobTitleGuess, language, hadCoverLetter, matchScore, jobDescription, result: AdaptResult }`, índice `by-createdAt`
 
 **Schemas Zod principais** (`lib/schema/`):
 - `ResumeSchema`: contact, summary, experience[], skills[], education[], certifications?, languages?
@@ -155,7 +155,7 @@ Três camadas para garantir que a IA **só reorganiza/reescreve o que existe** n
 
 Sem suíte automatizada ainda (candidato a melhoria). Verificação feita manualmente/via script:
 
-- Matriz de erros das duas rotas (validação 400, chave falsa 401 nos dois providers, sem vazamento de chave nas respostas).
+- Matriz de erros das duas rotas (validação 400, chave falsa 401, sem vazamento de chave nas respostas).
 - Import de PDF real (extração via pdfjs), persistência IndexedDB (salvar → reload → repovoa), histórico (render/abrir/excluir), grounding check (flagueia itens fabricados, ignora reais), "Limpar dados" (zero rastro).
 - `tsc --noEmit` e `next build` limpos.
 
@@ -163,7 +163,7 @@ Sem suíte automatizada ainda (candidato a melhoria). Verificação feita manual
 
 ## Fora do escopo / roadmap
 
-Fora do MVP (decisão registrada em `PLAN.md`): login/multiusuário, múltiplos templates, scraping de URL de vaga, billing, outros provedores, OCR. Fase 7 opcional não construída: métricas anônimas (Drizzle + Neon).
+Fora do MVP (decisão registrada em `PLAN.md`): login/multiusuário, múltiplos templates, scraping de URL de vaga, billing, OCR. O app usa **apenas o Google Gemini** (BYOK) — Claude/OpenAI foram removidos por exigirem cartão/créditos pré-pagos, inviável para o público-alvo. Fase 7 opcional não construída: métricas anônimas (Drizzle + Neon).
 
 ---
 
@@ -173,11 +173,11 @@ Fora do MVP (decisão registrada em `PLAN.md`): login/multiusuário, múltiplos 
 
 Tailor your resume to specific job postings with AI — **without fabricating anything**. Paste your resume (or import a PDF) plus the job description and get an ATS-optimized resume, a match analysis with gaps, and an optional cover letter, exportable to PDF.
 
-**BYOK (bring your own key):** users provide their own API key (Claude or OpenAI). The key lives in the browser; the app has zero AI cost and stores no user data server-side.
+**BYOK (bring your own key):** users provide their own **Google Gemini** key — free, no credit card ([Google AI Studio](https://aistudio.google.com/app/apikey)). The key lives in the browser; the app has zero AI cost and stores no user data server-side.
 
 ## How it works
 
-1. **Setup:** pick a provider (Claude/OpenAI) and paste your API key.
+1. **Setup:** paste your Google Gemini key (free at the [AI Studio](https://aistudio.google.com/app/apikey), no credit card). Default model `gemini-2.0-flash`, overridable.
 2. **Base resume:** paste text or import a PDF (client-side extraction). Optionally "structure" it via AI into a reviewable JSON — this resume is the **source of truth**.
 3. **Adaptation:** paste the job description, pick output language (PT/EN) and cover-letter toggle. The backend calls the AI with output **forced to a Zod schema** and returns: adapted resume + match analysis (score, met requirements with evidence, gaps, keywords) + optional letter.
 4. **Result:** clean ATS-friendly template, inline field-by-field editor, export as **2 separate PDFs** (resume and letter) via the print dialog.
@@ -185,7 +185,7 @@ Tailor your resume to specific job postings with AI — **without fabricating an
 
 ## Stack & requirements
 
-Next.js **15.5** (App Router — intentionally pinned, don't bump to 16 without an explicit decision), React 19, Tailwind 4, shadcn/ui (**base-ui**, not Radix), Framer Motion, Vercel **AI SDK v6** (`generateObject`), **Zod v4**, `idb` (IndexedDB), `pdfjs-dist`, `react-to-print` v3. Deploys to Vercel. Requires **Node 20+**.
+Next.js **15.5** (App Router — intentionally pinned, don't bump to 16 without an explicit decision), React 19, Tailwind 4, shadcn/ui (**base-ui**, not Radix), Framer Motion, Vercel **AI SDK v6** (`generateObject`, `@ai-sdk/google` — Google Gemini), **Zod v4**, `idb` (IndexedDB), `pdfjs-dist`, `react-to-print` v3. Deploys to Vercel. Requires **Node 20+**.
 
 ```bash
 npm install      # postinstall copies the pdfjs worker into /public
@@ -201,12 +201,12 @@ No required `.env` — the AI key is user-provided per request.
 Fullstack Next.js monorepo — frontend and backend ship in one deploy:
 
 - **Frontend:** `app/page.tsx` orchestrates the steps; `components/steps|resume|match|history`; all user data (key in `localStorage` under `cvt.*`, base resume + history in IndexedDB db `cv-tailor`) lives **browser-only**.
-- **Backend:** two thin route handlers — `POST /api/adapt` and `POST /api/structure` (`lib/ai/` does the provider calls). Node runtime, `force-dynamic`, no cache, no server state.
+- **Backend:** two thin route handlers — `POST /api/adapt` and `POST /api/structure` (`lib/ai/` instantiates Gemini via `providers.ts`). Node runtime, `force-dynamic`, no cache, no server state.
 - **Shared:** Zod schemas in `lib/schema/` validate on both ends. Errors are sanitized by `lib/api-error.ts` (401 invalid key · 429 rate limit · 402 quota · 400 validation · 502 generic).
 
 ## Security invariants (BYOK) — non-negotiable
 
-1. The user's key travels **only in the request body**, is used to instantiate the provider once, and is discarded. Never persist it (global memory, cache, DB, logs).
+1. The user's key travels **only in the request body**, is used to instantiate Gemini once, and is discarded. Never persist it (global memory, cache, DB, logs).
 2. **Never** log request bodies or echo the key in error messages.
 3. No caching on API routes.
 4. "Clear data" (`lib/storage/clear.ts`) wipes key + IndexedDB and must leave **zero trace** — the persistence effect in `page.tsx` skips one cycle post-wipe (`skipPersist`); `saveSettings` never writes an empty key.
@@ -227,8 +227,8 @@ Fullstack Next.js monorepo — frontend and backend ship in one deploy:
 
 ## Testing status
 
-No automated suite yet (good first improvement). Manually verified: API error matrix for both routes (validation 400s, fake-key 401s on both providers, no key leakage), real PDF import, IndexedDB persistence across reloads, history flow, grounding check (flags fabricated items, stays silent on real ones), zero-trace wipe, clean `tsc` and production build. **The AI success path requires a real key (BYOK)** — test with yours before releases.
+No automated suite yet (good first improvement). Manually verified: API error matrix for both routes (validation 400s, fake-key 401s, no key leakage), real PDF import, IndexedDB persistence across reloads, history flow, grounding check (flags fabricated items, stays silent on real ones), zero-trace wipe, clean `tsc` and production build. **The AI success path requires a real key (BYOK)** — test with yours before releases.
 
 ## Out of scope / roadmap
 
-Per `PLAN.md`: no auth/multi-user, single template only, no job-URL scraping, no billing, no extra providers, no OCR. Optional Phase 7 (anonymous metrics via Drizzle + Neon) was intentionally not built.
+Per `PLAN.md`: no auth/multi-user, single template only, no job-URL scraping, no billing, no OCR. The app uses **Google Gemini only** (BYOK) — Claude/OpenAI were removed because they require a card / prepaid credits, unworkable for the target audience. Optional Phase 7 (anonymous metrics via Drizzle + Neon) was intentionally not built.
